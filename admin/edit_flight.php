@@ -131,6 +131,8 @@ if (!$flight) {
 
         <input type="submit" value="Update Flight">
     </form>
-
+    
+        <div align="center"><a href="manage_flight.php">Go Back</a></div>
+        
 </body>
 </html>

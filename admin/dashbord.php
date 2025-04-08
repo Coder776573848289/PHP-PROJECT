@@ -42,13 +42,17 @@ $username = $_SESSION['admin'];
     </style>
 </head>
 <body>
+    
     <div class="dashboard">
         <h2>Welcome, <?php echo htmlspecialchars($username); ?>!</h2>
+        
         
         <a href="manage_flight.php">Total Flights</a>
         <a href="booking.php">Booking</a>
         <a href="pending-payments.php">Pending Payments</a>
-        <a href="todays-bookings.php">Today's Booking</a>
+        <a href="todaybookings.php">Today's Booking</a>
+        <a href="manageusers.php">Manage All Users</a>
     </div>
+    <h3><a href="logout.php"><- LogOut</a></h3>
 </body>
 </html>

@@ -14,10 +14,13 @@
 </head>
 
 <body>
+    <div class="main-div">
     <h1>Welcome to PDP Airlines</h1>
-    <a href="register.php">Register</a> |
+    <a href="register.php" >Register</a> |
     <a href="login.php">Login</a> |
     <a href="admin/login.php">Admin Login</a>
+    </div>
+    
 </body>
 
 </html>

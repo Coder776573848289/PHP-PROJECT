@@ -107,5 +107,7 @@ $result = $conn->query($sql);
         </tbody>
     </table>
 
+    <a href="dashbord.php">← Back to Dashboard</a>
+
 </body>
 </html>

@@ -55,6 +55,7 @@ if (isset($_POST['login'])) {
 
         <input type="submit" name="login" value="Login">
     </form>
+    <a href="../index.php">Back</a>
     </div>
 </body>
 </html>

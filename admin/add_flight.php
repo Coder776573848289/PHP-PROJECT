@@ -134,5 +134,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <input type="submit" value="Add Flight">
     </form>
 
+        <div align="center"><a href="manage_flight.php">Go Back</a></div>
 </body>
 </html>
