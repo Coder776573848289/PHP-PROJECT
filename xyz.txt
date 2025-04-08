@@ -1,0 +1,485 @@
+flow of website
+
+index.php
+
+code:: 
+
+<!-- welcome page -->
+
+<?php
+    require_once 'includes/db.php';
+?>
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Welcome to PDP Airlines</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+    <h1>Welcome to PDP Airlines</h1>
+    <a href="register.php">Register</a> |
+    <a href="login.php">Login</a> |
+    <a href="admin/login.php">Admin Login</a>
+</body>
+
+</html>
+
+
+register.php
+
+code:: 
+<!-- user register -->
+
+<!-- register.php -->
+<?php include 'includes/header.php'; ?>
+<h2>User Registration</h2>
+<form method="POST">
+    <input type="text" name="name" placeholder="Full Name" required><br>
+    <input type="email" name="email" placeholder="Email" required><br>
+    <input type="password" name="password" placeholder="Password" required><br>
+    <input type="submit" name="register" value="Register">
+</form>
+<?php include 'includes/footer.php'; ?>
+
+<?php
+require_once 'includes/db.php';
+
+if (isset($_POST['register'])) {
+    $name = mysqli_real_escape_string($conn, $_POST['name']);
+    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+
+    $checkEmail = mysqli_query($conn, "SELECT * FROM users WHERE email = '$email'");
+    if (mysqli_num_rows($checkEmail) > 0) {
+        echo "⚠️ Email already exists!";
+    } else {
+        $insert = mysqli_query($conn, "INSERT INTO users (name, email, password) VALUES ('$name', '$email', '$password')");
+        if ($insert) {
+            echo "✅ Registered successfully! <a href='login.php'>Login Now</a>";
+        } else {
+            echo "❌ Registration failed.";
+        }
+    }
+}
+?>
+
+
+login.php::
+
+code:: 
+
+<?php
+session_start();
+require_once 'includes/db.php';
+
+$error = "";
+
+// 🔐 Handle login logic before HTML
+if (isset($_POST['login'])) {
+    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $password = $_POST['password'];
+
+    $result = mysqli_query($conn, "SELECT * FROM users WHERE email = '$email' LIMIT 1");
+    $user = mysqli_fetch_assoc($result);
+
+    if ($user && password_verify($password, $user['password'])) {
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_name'] = $user['name'];
+        header("Location: flight_search.php");
+        exit();
+    } else {
+        $error = "❌ Invalid email or password.";
+    }
+}
+?>
+
+<?php include 'includes/header.php'; ?>
+
+<h2>User Login</h2>
+
+<!-- Show error message -->
+<?php if (!empty($error)) echo "<p style='color:red;'>$error</p>"; ?>
+
+<form method="POST">
+    <input type="email" name="email" placeholder="Email" required><br>
+    <input type="password" name="password" placeholder="Password" required><br>
+    <input type="submit" name="login" value="Login">
+</form>
+
+<?php include 'includes/footer.php'; ?>
+
+flight_search.php
+
+code::
+
+
+<?php
+session_start();
+include 'includes/header.php';
+require_once 'includes/db.php';
+?>
+
+<h2>Search Flights</h2>
+<form method="POST">
+    <label>From:</label>
+    <input type="text" name="source" required><br>
+
+    <label>To:</label>
+    <input type="text" name="destination" required><br>
+
+    <label>Departure Time (e.g., 09:00 AM):</label>
+    <input type="text" name="departure"><br>
+
+    <label>Arrival Time (e.g., 12:00 PM):</label>
+    <input type="text" name="arrival"><br>
+
+    <label>Min Price:</label>
+    <input type="number" name="min_price" min="0"><br>
+
+    <label>Max Price:</label>
+    <input type="number" name="max_price" min="0"><br>
+
+    <label>Status:</label>
+    <select name="status">
+        <option value="">--Any--</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+    </select><br>
+
+    <input type="submit" name="search" value="Search Flights">
+</form>
+
+<?php
+if (isset($_POST['search'])) {
+    $source = mysqli_real_escape_string($conn, $_POST['source']);
+    $destination = mysqli_real_escape_string($conn, $_POST['destination']);
+    $departure = mysqli_real_escape_string($conn, $_POST['departure']);
+    $arrival = mysqli_real_escape_string($conn, $_POST['arrival']);
+    $min_price = $_POST['min_price'];
+    $max_price = $_POST['max_price'];
+    $status = mysqli_real_escape_string($conn, $_POST['status']);
+
+    // ✅ Build the dynamic query
+    $query = "SELECT * FROM flights WHERE from_location='$source' AND to_location='$destination'";
+
+    if (!empty($departure)) {
+        $query .= " AND departure='$departure'";
+    }
+
+    if (!empty($arrival)) {
+        $query .= " AND arrival='$arrival'";
+    }
+
+    if (!empty($min_price)) {
+        $query .= " AND price >= $min_price";
+    }
+
+    if (!empty($max_price)) {
+        $query .= " AND price <= $max_price";
+    }
+
+    if (!empty($status)) {
+        $query .= " AND status='$status'";
+    }
+
+    $result = mysqli_query($conn, $query);
+
+    if (mysqli_num_rows($result) > 0) {
+        echo "<h3>Available Flights</h3>";
+        echo "<table border='1'>
+                <tr><th>Flight</th><th>From</th><th>To</th><th>Departure</th><th>Arrival</th><th>Price</th><th>Status</th><th>Action</th></tr>";
+
+        while ($row = mysqli_fetch_assoc($result)) {
+            echo "<tr>
+                    <td>{$row['flight_name']}</td>
+                    <td>{$row['from_location']}</td>
+                    <td>{$row['to_location']}</td>
+                    <td>{$row['departure']}</td>
+                    <td>{$row['arrival']}</td>
+                    <td>₹{$row['price']}</td>
+                    <td>{$row['status']}</td>
+                    <td><a href='passenger_details.php?flight_id={$row['id']}'>Book Now</a></td>
+                  </tr>";
+        }
+        echo "</table>";
+    } else {
+        echo "❌ No flights found for selected criteria.";
+    }
+}
+?>
+
+<?php include 'includes/footer.php'; ?>
+
+
+
+passenger_details.php
+
+code:: 
+
+<?php
+session_start();
+include 'includes/header.php';
+require_once 'includes/db.php';
+
+if (!isset($_GET['flight_id'])) {
+    echo "Flight not selected.";
+    exit();
+}
+$_SESSION['flight_id'] = $_GET['flight_id'];
+?>
+
+<h2>Passenger Details</h2>
+<form method="POST">
+  <input type="text" name="name" placeholder="Full Name" required><br>
+
+  <input type="number" name="age" placeholder="Age" required><br>
+
+  <select name="gender" required>
+    <option value="">Select Gender</option>
+    <option value="Male">Male</option>
+    <option value="Female">Female</option>
+    <option value="Other">Other</option>
+  </select><br>
+
+  <input type="text" name="seat_no" placeholder="Seat No (e.g., A1)" required><br>
+
+  <input type="submit" name="next" value="Proceed to Payment">
+</form>
+
+<?php
+if (isset($_POST['next'])) {
+  $_SESSION['passenger'] = [
+    'name' => $_POST['name'],
+    'age' => $_POST['age'],
+    'gender' => $_POST['gender'],
+    'seat_no' => $_POST['seat_no']
+  ];
+
+  // Proceed to payment page
+  header("Location: payment.php");
+  exit();
+}
+?>
+
+<?php include 'includes/footer.php'; ?>
+
+
+
+payment.php::
+
+
+code::
+
+<?php
+session_start();
+include 'includes/header.php';
+require_once 'includes/db.php';
+
+if (!isset($_SESSION['passenger']) || !isset($_SESSION['flight_id']) || !isset($_SESSION['user_id'])) {
+    echo "Incomplete booking data. Please start again.";
+    exit();
+}
+
+$passenger = $_SESSION['passenger'];
+$flight_id = $_SESSION['flight_id'];
+$user_id = $_SESSION['user_id'];
+
+$name = $passenger['name'];
+$age = $passenger['age'];
+$gender = $passenger['gender'];
+$seat_no = $passenger['seat_no']; // Make sure ye passenger_details.php me liya ho
+$payment_status = "Paid";
+$booking_time = date('Y-m-d H:i:s');
+
+$query = "INSERT INTO bookings (user_id, flight_id, passenger_name, gender, age, seat_no, payment_status, booking_time)
+          VALUES ('$user_id', '$flight_id', '$name', '$gender', '$age', '$seat_no', '$payment_status', '$booking_time')";
+
+if (mysqli_query($conn, $query)) {
+    $booking_id = mysqli_insert_id($conn); // ✅ Get the booking ID
+
+    echo "<h2>✅ Booking Confirmed!</h2>";
+    echo "<p><strong>Name:</strong> $name</p>";
+    echo "<p><strong>Flight ID:</strong> $flight_id</p>";
+    echo "<p><strong>Seat No:</strong> $seat_no</p>";
+    echo "<p><strong>Payment:</strong> $payment_status</p>";
+    echo "<p><strong>Booking Time:</strong> $booking_time</p>";
+
+    echo "<p><a href='ticket.php?booking_id=$booking_id' style='color:blue; text-decoration:underline;'>🎟️ View Ticket</a></p>";
+
+    // 🔒 Clear session to avoid duplicate
+    unset($_SESSION['passenger']);
+    unset($_SESSION['flight_id']);
+} else {
+    echo "❌ Booking failed: " . mysqli_error($conn);
+}
+?>
+
+<?php include 'includes/footer.php'; ?>
+
+
+ticket.php::
+
+code::
+
+<!-- show ticket + download pdf -->
+
+<?php
+session_start();
+include 'includes/header.php';
+require_once 'includes/db.php';
+
+// 🛡️ Check booking ID is passed
+if (!isset($_GET['booking_id']) || !isset($_SESSION['user_id'])) {
+    echo "Invalid access.";
+    exit();
+}
+
+$booking_id = $_GET['booking_id'];
+$user_id = $_SESSION['user_id'];
+
+// 🔍 Fetch booking details
+$query = "SELECT b.*, f.flight_name, f.from_location, f.to_location, f.departure_time, f.arrival_time
+          FROM bookings b
+          JOIN flights f ON b.flight_id = f.id
+          WHERE b.id = $booking_id AND b.user_id = $user_id";
+
+$result = mysqli_query($conn, $query);
+
+if (mysqli_num_rows($result) == 1):
+    $row = mysqli_fetch_assoc($result);
+?>
+
+<style>
+.ticket {
+    border: 2px dashed #333;
+    padding: 20px;
+    margin: 30px auto;
+    width: 60%;
+    background: #f7f7f7;
+    font-family: Arial, sans-serif;
+    border-radius: 10px;
+}
+.ticket h2 {
+    margin-top: 0;
+    color: #0066cc;
+}
+.ticket p {
+    margin: 5px 0;
+}
+.print-btn {
+    margin-top: 20px;
+}
+</style>
+
+<div class="ticket">
+    <h2>🎫 Flight Ticket</h2>
+    <p><strong>Passenger:</strong> <?= $row['passenger_name'] ?></p>
+    <p><strong>Age:</strong> <?= $row['age'] ?></p>
+    <p><strong>Gender:</strong> <?= $row['gender'] ?></p>
+    <hr>
+    <p><strong>Flight:</strong> <?= $row['flight_name'] ?></p>
+    <p><strong>From:</strong> <?= $row['from_location'] ?></p>
+    <p><strong>To:</strong> <?= $row['to_location'] ?></p>
+    <p><strong>Departure:</strong> <?= $row['departure_time'] ?></p>
+    <p><strong>Arrival:</strong> <?= $row['arrival_time'] ?></p>
+    <p><strong>Seat No:</strong> <?= $row['seat_no'] ?></p>
+    <p><strong>Status:</strong> <?= $row['payment_status'] ?></p>
+    <p><strong>Booked On:</strong> <?= $row['booking_time'] ?></p>
+
+    <div class="print-btn">
+        <button onclick="window.print()">🖨️ Print Ticket</button>
+    </div>
+</div>
+
+<?php else: ?>
+    <p>❌ Ticket not found or access denied.</p>
+<?php endif; ?>
+
+<?php include 'includes/footer.php'; ?>
+
+
+my_booking.php
+
+<!-- user's booking -->
+
+<?php
+session_start();
+include 'includes/header.php';
+require_once 'includes/db.php';
+
+// 👉 Ensure user is logged in
+if (!isset($_SESSION['user_id'])) {
+    echo "Please login to view your bookings.";
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+// 🔍 Fetch bookings from database
+$query = "SELECT b.*, f.flight_name, f.from_location, f.to_location, f.departure_time, f.arrival_time
+          FROM bookings b
+          JOIN flights f ON b.flight_id = f.id
+          WHERE b.user_id = $user_id
+          ORDER BY b.booking_time DESC";
+
+$result = mysqli_query($conn, $query);
+?>
+
+<h2>🧾 My Bookings</h2>
+
+<?php if (mysqli_num_rows($result) > 0): ?>
+    <table border="1" cellpadding="10">
+        <tr>
+            <th>Flight</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Departure</th>
+            <th>Arrival</th>
+            <th>Passenger</th>
+            <th>Age</th>
+            <th>Gender</th>
+            <th>Seat</th>
+            <th>Status</th>
+            <th>Booked On</th>
+        </tr>
+        <?php while ($row = mysqli_fetch_assoc($result)): ?>
+            <tr>
+                <td><?= $row['flight_name'] ?></td>
+                <td><?= $row['from_location'] ?></td>
+                <td><?= $row['to_location'] ?></td>
+                <td><?= $row['departure_time'] ?></td>
+                <td><?= $row['arrival_time'] ?></td>
+                <td><?= $row['passenger_name'] ?></td>
+                <td><?= $row['age'] ?></td>
+                <td><?= $row['gender'] ?></td>
+                <td><?= $row['seat_no'] ?></td>
+                <td><?= $row['payment_status'] ?></td>
+                <td><?= $row['booking_time'] ?></td>
+            </tr>
+        <?php endwhile; ?>
+    </table>
+<?php else: ?>
+    <p>❌ No bookings found.</p>
+<?php endif; ?>
+
+<?php include 'includes/footer.php'; ?>
+
+
+logout.php
+
+<!-- session logout -->
+
+<?php
+session_start();
+session_destroy(); // Clear all session data
+header("Location: login.php"); // Redirect to login page
+exit();
+?>
+
+
+
+bataia isme kya changes ki zaroorat he
