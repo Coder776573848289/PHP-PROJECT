@@ -1,37 +1,46 @@
-<?php
-session_start();
-require_once '../includes/db.php'; // adjust path as needed
-
-// Check admin login
-if (!isset($_SESSION['admin'])) {
-    header("Location: login.php");
-    exit();
-}
-
-// Handle form submission
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $airline_name = $_POST['airline_name'];
-    $from_location = $_POST['from_location'];
-    $to_location = $_POST['to_location'];
-    $departure = $_POST['departure'];
-    $arrival = $_POST['arrival'];
-    $price = $_POST['price'];
-    $seats = $_POST['seats'];
-    $status = $_POST['status'];
-
-    $sql = "INSERT INTO flights (airline_name, from_location, to_location, departure, arrival, price, seats, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("sssssiis", $airline_name, $from_location, $to_location, $departure, $arrival, $price, $seats, $status);
-
-    if ($stmt->execute()) {
-        header("Location: manage_flight.php");
+    <?php
+    session_start();
+    require_once '../includes/db.php';
+    
+    if (!isset($_SESSION['admin'])) {
+        header("Location: login.php");
         exit();
-    } else {
-        echo "Failed to add new flight.";
     }
-}
-?>
+    
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        $airline_name = trim($_POST['airline_name']);
+        $from_location = $_POST['from_location'];
+        $to_location = $_POST['to_location'];
+        $departure = $_POST['departure'];
+        $arrival = $_POST['arrival'];
+        $price = floatval($_POST['price']);
+        $seats = intval($_POST['seats']);
+        $status = $_POST['status'];
+    
+        // Extra validation
+        if ($from_location === $to_location) {
+            die("From and To locations cannot be the same.");
+        }
+    
+        $sql = "INSERT INTO flights (airline_name, from_location, to_location, departure, arrival, price, seats, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $conn->prepare($sql);
+    
+        if ($stmt) {
+            $stmt->bind_param("sssssiis", $airline_name, $from_location, $to_location, $departure, $arrival, $price, $seats, $status);
+    
+            if ($stmt->execute()) {
+                header("Location: manage_flight.php");
+                exit();
+            } else {
+                echo "Failed to add new flight. Error: " . $stmt->error;
+            }
+        } else {
+            echo "SQL preparation error: " . $conn->error;
+        }
+    }
+    ?>
+    
 
 <!DOCTYPE html>
 <html>

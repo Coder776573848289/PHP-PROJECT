@@ -23,9 +23,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $to_location = $_POST['to_location'];
     $departure = $_POST['departure'];
     $arrival = $_POST['arrival'];
-    $price = $_POST['price'];
-    $seats = $_POST['seats'];
+    $price = floatval($_POST['price']);
+    $seats = intval($_POST['seats']);
     $status = $_POST['status'];
+    $flight_id = intval($_GET['id']);
+
+    // Prevent from and to being same
+    if ($from_location === $to_location) {
+        die("From and To locations cannot be the same.");
+    }
 
     $update_sql = "UPDATE flights SET 
         airline_name=?, 
@@ -37,15 +43,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         seats=?, 
         status=? 
         WHERE id=?";
-        
+
     $stmt = $conn->prepare($update_sql);
-    $stmt->bind_param("sssssdiss", $airline_name, $from_location, $to_location, $departure, $arrival, $price, $seats, $status, $flight_id);
-    
-    if ($stmt->execute()) {
-        header("Location: manage_flight.php");
-        exit();
+
+    if ($stmt) {
+        $stmt->bind_param("sssssdiss", $airline_name, $from_location, $to_location, $departure, $arrival, $price, $seats, $status, $flight_id);
+
+        if ($stmt->execute()) {
+            header("Location: manage_flight.php");
+            exit();
+        } else {
+            echo "Update failed: " . $stmt->error;
+        }
     } else {
-        echo "Failed to update flight.";
+        echo "SQL prepare failed: " . $conn->error;
     }
 }
 
