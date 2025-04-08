@@ -106,10 +106,34 @@ if (!$flight) {
         <input type="text" name="airline_name" value="<?php echo htmlspecialchars($flight['airline_name']); ?>" required>
 
         <label>From Location:</label>
-        <input type="text" name="from_location" value="<?php echo htmlspecialchars($flight['from_location']); ?>" required>
+        <select name="from_location" required>
+            <option value=""> -- Select Source -- </option>
+            <option value="DEL" <?php if ($flight['from_location'] == 'DEL') echo 'selected'; ?>>Indira Gandhi International Airport (DEL), New Delhi</option>
+            <option value="BOM" <?php if ($flight['from_location'] == 'BOM') echo 'selected'; ?>>Chhatrapati Shivaji Maharaj International Airport (BOM), Mumbai</option>
+            <option value="BLR" <?php if ($flight['from_location'] == 'BLR') echo 'selected'; ?>>Kempegowda International Airport (BLR), Bengaluru</option>
+            <option value="HYD" <?php if ($flight['from_location'] == 'HYD') echo 'selected'; ?>>Rajiv Gandhi International Airport (HYD), Hyderabad</option>
+            <option value="MAA" <?php if ($flight['from_location'] == 'MAA') echo 'selected'; ?>>Chennai International Airport (MAA), Chennai</option>
+            <option value="CCU" <?php if ($flight['from_location'] == 'CCU') echo 'selected'; ?>>Netaji Subhas Chandra Bose International Airport (CCU), Kolkata</option>
+            <option value="AMD" <?php if ($flight['from_location'] == 'AMD') echo 'selected'; ?>>Sardar Vallabhbhai Patel International Airport (AMD), Ahmedabad</option>
+            <option value="COK" <?php if ($flight['from_location'] == 'COK') echo 'selected'; ?>>Cochin International Airport (COK), Kochi</option>
+            <option value="PNQ" <?php if ($flight['from_location'] == 'PNQ') echo 'selected'; ?>>Pune Airport (PNQ), Pune</option>
+            <option value="GOI" <?php if ($flight['from_location'] == 'GOI') echo 'selected'; ?>>Dabolim Airport (GOI), Goa</option>
+        </select>
 
         <label>To Location:</label>
-        <input type="text" name="to_location" value="<?php echo htmlspecialchars($flight['to_location']); ?>" required>
+        <select name="to_location" required>
+            <option value=""> -- Select Destination -- </option>
+            <option value="DEL" <?php if ($flight['to_location'] == 'DEL') echo 'selected'; ?>>Indira Gandhi International Airport (DEL), New Delhi</option>
+            <option value="BOM" <?php if ($flight['to_location'] == 'BOM') echo 'selected'; ?>>Chhatrapati Shivaji Maharaj International Airport (BOM), Mumbai</option>
+            <option value="BLR" <?php if ($flight['to_location'] == 'BLR') echo 'selected'; ?>>Kempegowda International Airport (BLR), Bengaluru</option>
+            <option value="HYD" <?php if ($flight['to_location'] == 'HYD') echo 'selected'; ?>>Rajiv Gandhi International Airport (HYD), Hyderabad</option>
+            <option value="MAA" <?php if ($flight['to_location'] == 'MAA') echo 'selected'; ?>>Chennai International Airport (MAA), Chennai</option>
+            <option value="CCU" <?php if ($flight['to_location'] == 'CCU') echo 'selected'; ?>>Netaji Subhas Chandra Bose International Airport (CCU), Kolkata</option>
+            <option value="AMD" <?php if ($flight['to_location'] == 'AMD') echo 'selected'; ?>>Sardar Vallabhbhai Patel International Airport (AMD), Ahmedabad</option>
+            <option value="COK" <?php if ($flight['to_location'] == 'COK') echo 'selected'; ?>>Cochin International Airport (COK), Kochi</option>
+            <option value="PNQ" <?php if ($flight['to_location'] == 'PNQ') echo 'selected'; ?>>Pune Airport (PNQ), Pune</option>
+            <option value="GOI" <?php if ($flight['to_location'] == 'GOI') echo 'selected'; ?>>Dabolim Airport (GOI), Goa</option>
+        </select>
 
         <label>Departure Time:</label>
         <input type="datetime-local" name="departure" value="<?php echo date('Y-m-d\TH:i', strtotime($flight['departure'])); ?>" required>

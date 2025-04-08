@@ -22,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $sql = "INSERT INTO flights (airline_name, from_location, to_location, departure, arrival, price, seats, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssssdiss", $airline_name, $from_location, $to_location, $departure, $arrival, $price, $seats, $status);
+    $stmt->bind_param("sssssiis", $airline_name, $from_location, $to_location, $departure, $arrival, $price, $seats, $status);
 
     if ($stmt->execute()) {
         header("Location: manage_flight.php");
@@ -108,10 +108,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <input type="text" name="airline_name" required>
 
         <label>From Location:</label>
-        <input type="text" name="from_location" required>
+        <select id="from_location" name="from_location">
+        <option value=""> -- Select Source -- </option>
+        <option value="DEL">Indira Gandhi International Airport (DEL), New Delhi</option>
+        <option value="BOM">Chhatrapati Shivaji Maharaj International Airport (BOM), Mumbai</option>
+        <option value="BLR">Kempegowda International Airport (BLR), Bengaluru</option>
+        <option value="HYD">Rajiv Gandhi International Airport (HYD), Hyderabad</option>
+        <option value="MAA">Chennai International Airport (MAA), Chennai</option>
+        <option value="CCU">Netaji Subhas Chandra Bose International Airport (CCU), Kolkata</option>
+        <option value="AMD">Sardar Vallabhbhai Patel International Airport (AMD), Ahmedabad</option>
+        <option value="COK">Cochin International Airport (COK), Kochi</option>
+        <option value="PNQ">Pune Airport (PNQ), Pune</option>
+        <option value="GOI">Dabolim Airport (GOI), Goa</option>
+        </select>
 
         <label>To Location:</label>
-        <input type="text" name="to_location" required>
+        <select id="to_location" name="to_location">
+        <option value=""> -- Select Destination -- </option>
+        <option value="DEL">Indira Gandhi International Airport (DEL), New Delhi</option>
+        <option value="BOM">Chhatrapati Shivaji Maharaj International Airport (BOM), Mumbai</option>
+        <option value="BLR">Kempegowda International Airport (BLR), Bengaluru</option>
+        <option value="HYD">Rajiv Gandhi International Airport (HYD), Hyderabad</option>
+        <option value="MAA">Chennai International Airport (MAA), Chennai</option>
+        <option value="CCU">Netaji Subhas Chandra Bose International Airport (CCU), Kolkata</option>
+        <option value="AMD">Sardar Vallabhbhai Patel International Airport (AMD), Ahmedabad</option>
+        <option value="COK">Cochin International Airport (COK), Kochi</option>
+        <option value="PNQ">Pune Airport (PNQ), Pune</option>
+        <option value="GOI">Dabolim Airport (GOI), Goa</option>
+        </select>
 
         <label>Departure Time:</label>
         <input type="datetime-local" name="departure" id="departure" required>

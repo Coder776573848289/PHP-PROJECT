@@ -28,3 +28,5 @@ if (isset($_POST['login'])) {
 </form>
 
 <a href="reset_password.php">Forgot Password?</a>
+<br>
+<a href="index.php">Back</a>

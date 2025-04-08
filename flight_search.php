@@ -24,7 +24,7 @@ require_once 'includes/db.php';
     <label>Max Price:</label>
     <input type="number" name="max_price" min="0"><br>
 
-    <label>Class:</label>
+    <!-- <label>Class:</label>
     <select name="class">
         <option value="">Any</option>
         <option value="economy">Economy</option>
@@ -33,7 +33,7 @@ require_once 'includes/db.php';
     </select><br>
 
     <label>Flight Duration (hours):</label>
-    <input type="number" name="min_duration" min="0"><br>
+    <input type="number" name="min_duration" min="0"><br> -->
 
     <input type="submit" name="search" value="Search Flights">
 </form>

@@ -8,7 +8,9 @@
     <input type="email" name="email" placeholder="Email" required><br>
     <input type="password" name="password" placeholder="Password" required><br>
     <input type="submit" name="register" value="Register">
+
 </form>
+<a href="index.php">Back</a>
 <?php include 'includes/footer.php'; ?>
 
 <?php
