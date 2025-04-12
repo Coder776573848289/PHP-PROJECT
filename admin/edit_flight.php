@@ -1,77 +1,103 @@
 <?php
 session_start();
-require_once '../includes/db.php'; // adjust path as needed
+require_once '../includes/db.php';
 
-// Check if admin is logged in
 if (!isset($_SESSION['admin'])) {
     header("Location: login.php");
     exit();
 }
 
-// Get the flight ID from URL
-if (!isset($_GET['id']) || empty($_GET['id'])) {
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header("Location: manage_flight.php");
     exit();
 }
 
-$flight_id = $_GET['id'];
+$id = $_GET['id']; // Changed from $flight_id
 
-// Handle form submission
+// Fetch flight details for editing
+$sql = "SELECT * FROM flights2 WHERE id = ?"; // Changed WHERE clause
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $id); // Changed variable
+$stmt->execute();
+$result = $stmt->get_result();
+$flight = $result->fetch_assoc();
+$stmt->close();
+
+if (!$flight) {
+    header("Location: manage_flight.php");
+    exit();
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $airline_name = $_POST['airline_name'];
+    $airline_name = trim($_POST['airline_name']);
     $from_location = $_POST['from_location'];
     $to_location = $_POST['to_location'];
     $departure = $_POST['departure'];
     $arrival = $_POST['arrival'];
-    $price = floatval($_POST['price']);
-    $seats = intval($_POST['seats']);
+    $economy_seats = intval($_POST['economy_seats']);
+    $business_seats = intval($_POST['business_seats']);
+    $first_class_seats = isset($_POST['first_class_seats']) ? intval($_POST['first_class_seats']) : 0;
+    $economy_price = floatval($_POST['economy_price']);
+    $business_price = floatval($_POST['business_price']);
+    $first_class_price = isset($_POST['first_class_price']) ? floatval($_POST['first_class_price']) : 0.00;
+    $duration = intval($_POST['duration']);
     $status = $_POST['status'];
-    $flight_id = intval($_GET['id']);
 
-    // Prevent from and to being same
+    // Validate airport
     if ($from_location === $to_location) {
-        die("From and To locations cannot be the same.");
+        $error = "From and To locations cannot be the same.";
     }
 
-    $update_sql = "UPDATE flights SET 
-        airline_name=?, 
-        from_location=?, 
-        to_location=?, 
-        departure=?, 
-        arrival=?, 
-        price=?, 
-        seats=?, 
-        status=? 
-        WHERE id=?";
+    if (!isset($error)) {
+        $update_sql = "UPDATE flights2 SET
+            airline_name = ?,
+            from_location = ?,
+            to_location = ?,
+            departure = ?,
+            arrival = ?,
+            duration = ?,
+            status = ?,
+            economy_seats = ?,
+            economy_price = ?,
+            business_seats = ?,
+            business_price = ?,
+            first_class_seats = ?,
+            first_class_price = ?
+            WHERE id = ?"; // Changed WHERE clause
 
-    $stmt = $conn->prepare($update_sql);
+        $stmt = $conn->prepare($update_sql);
+        if ($stmt) {
+            $stmt->bind_param("sssssisidiidii",
+                $airline_name,
+                $from_location,
+                $to_location,
+                $departure,
+                $arrival,
+                $duration,
+                $status,
+                $economy_seats,
+                $economy_price,
+                $business_seats,
+                $business_price,
+                $first_class_seats,
+                $first_class_price,
+                $id // Changed from $flight_id
+            );
 
-    if ($stmt) {
-        $stmt->bind_param("sssssdiss", $airline_name, $from_location, $to_location, $departure, $arrival, $price, $seats, $status, $flight_id);
-
-        if ($stmt->execute()) {
-            header("Location: manage_flight.php");
-            exit();
+            if ($stmt->execute()) {
+                header("Location: manage_flight.php?updated=true");
+                exit();
+            } else {
+                $error = "Update Error: " . $stmt->error;
+            }
+            $stmt->close();
         } else {
-            echo "Update failed: " . $stmt->error;
+            $error = "Prepare Failed: " . $conn->error;
         }
-    } else {
-        echo "SQL prepare failed: " . $conn->error;
     }
 }
 
-// Fetch flight details for form
-$sql = "SELECT * FROM flights WHERE id = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $flight_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$flight = $result->fetch_assoc();
-
-if (!$flight) {
-    echo "Flight not found.";
-    exit();
-}
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -106,68 +132,138 @@ if (!$flight) {
         input[type="submit"]:hover {
             background-color: #0056b3;
         }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
     </style>
+    <script>
+        function validateForm() {
+            const departure = new Date(document.getElementById('departure').value);
+            const arrival = new Date(document.getElementById('arrival').value);
+            const now = new Date();
+            const economy_price = parseFloat(document.getElementById('economy_price').value);
+            const economy_seats = parseInt(document.getElementById('economy_seats').value);
+            const business_price = parseFloat(document.getElementById('business_price').value);
+            const business_seats = parseInt(document.getElementById('business_seats').value);
+            const first_class_price = parseFloat(document.getElementById('first_class_price').value);
+            const first_class_seats = parseInt(document.getElementById('first_class_seats').value);
+            const durationInput = document.querySelector('input[name="duration"]');
+
+            if (departure <= now) {
+                alert("Departure time must be in the future.");
+                return false;
+            }
+
+            if (arrival <= departure) {
+                alert("Arrival time must be after departure.");
+                return false;
+            }
+
+            if (isNaN(economy_price) || economy_price < 0) {
+                alert("Economy price must be a non-negative number.");
+                return false;
+            }
+
+            if (isNaN(economy_seats) || economy_seats < 0 || !Number.isInteger(economy_seats)) {
+                alert("Economy seats must be a non-negative whole number.");
+                return false;
+            }
+
+            if (isNaN(business_price) || business_price < 0) {
+                alert("Business price must be a non-negative number.");
+                return false;
+            }
+
+            if (isNaN(business_seats) || business_seats < 0 || !Number.isInteger(business_seats)) {
+                alert("Business seats must be a non-negative whole number.");
+                return false;
+            }
+
+            if (isNaN(first_class_price) || first_class_price < 0) {
+                alert("First Class price must be a non-negative number.");
+                return false;
+            }
+
+            if (isNaN(first_class_seats) || first_class_seats < 0 || !Number.isInteger(first_class_seats)) {
+                alert("First Class seats must be a non-negative whole number.");
+                return false;
+            }
+
+            if (durationInput) {
+                const durationValue = parseInt(durationInput.value);
+                if (isNaN(durationValue) || durationValue <= 0 || !Number.isInteger(durationValue)) {
+                    alert("Duration must be a positive whole number.");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    </script>
 </head>
 <body>
 
-    <form method="POST">
+    <form method="POST" onsubmit="return validateForm();">
         <h2>Edit Flight</h2>
+        <?php if (isset($error)): ?>
+            <p class="error"><?php echo $error; ?></p>
+        <?php endif; ?>
 
-        <label>Airline Name:</label>
+        <input type="hidden" name="flight_id" value="<?php echo $flight['id']; ?>"> <label>Airline Name:</label>
         <input type="text" name="airline_name" value="<?php echo htmlspecialchars($flight['airline_name']); ?>" required>
 
         <label>From Location:</label>
         <select name="from_location" required>
-            <option value=""> -- Select Source -- </option>
-            <option value="DEL" <?php if ($flight['from_location'] == 'DEL') echo 'selected'; ?>>Indira Gandhi International Airport (DEL), New Delhi</option>
-            <option value="BOM" <?php if ($flight['from_location'] == 'BOM') echo 'selected'; ?>>Chhatrapati Shivaji Maharaj International Airport (BOM), Mumbai</option>
-            <option value="BLR" <?php if ($flight['from_location'] == 'BLR') echo 'selected'; ?>>Kempegowda International Airport (BLR), Bengaluru</option>
-            <option value="HYD" <?php if ($flight['from_location'] == 'HYD') echo 'selected'; ?>>Rajiv Gandhi International Airport (HYD), Hyderabad</option>
-            <option value="MAA" <?php if ($flight['from_location'] == 'MAA') echo 'selected'; ?>>Chennai International Airport (MAA), Chennai</option>
-            <option value="CCU" <?php if ($flight['from_location'] == 'CCU') echo 'selected'; ?>>Netaji Subhas Chandra Bose International Airport (CCU), Kolkata</option>
-            <option value="AMD" <?php if ($flight['from_location'] == 'AMD') echo 'selected'; ?>>Sardar Vallabhbhai Patel International Airport (AMD), Ahmedabad</option>
-            <option value="COK" <?php if ($flight['from_location'] == 'COK') echo 'selected'; ?>>Cochin International Airport (COK), Kochi</option>
-            <option value="PNQ" <?php if ($flight['from_location'] == 'PNQ') echo 'selected'; ?>>Pune Airport (PNQ), Pune</option>
-            <option value="GOI" <?php if ($flight['from_location'] == 'GOI') echo 'selected'; ?>>Dabolim Airport (GOI), Goa</option>
-        </select>
+            <option value="">-- Select Source --</option>
+            <option value="DEL" <?php if ($flight['from_location'] === 'DEL') echo 'selected'; ?>>Delhi</option>
+            <option value="BOM" <?php if ($flight['from_location'] === 'BOM') echo 'selected'; ?>>Mumbai</option>
+            </select>
 
         <label>To Location:</label>
         <select name="to_location" required>
-            <option value=""> -- Select Destination -- </option>
-            <option value="DEL" <?php if ($flight['to_location'] == 'DEL') echo 'selected'; ?>>Indira Gandhi International Airport (DEL), New Delhi</option>
-            <option value="BOM" <?php if ($flight['to_location'] == 'BOM') echo 'selected'; ?>>Chhatrapati Shivaji Maharaj International Airport (BOM), Mumbai</option>
-            <option value="BLR" <?php if ($flight['to_location'] == 'BLR') echo 'selected'; ?>>Kempegowda International Airport (BLR), Bengaluru</option>
-            <option value="HYD" <?php if ($flight['to_location'] == 'HYD') echo 'selected'; ?>>Rajiv Gandhi International Airport (HYD), Hyderabad</option>
-            <option value="MAA" <?php if ($flight['to_location'] == 'MAA') echo 'selected'; ?>>Chennai International Airport (MAA), Chennai</option>
-            <option value="CCU" <?php if ($flight['to_location'] == 'CCU') echo 'selected'; ?>>Netaji Subhas Chandra Bose International Airport (CCU), Kolkata</option>
-            <option value="AMD" <?php if ($flight['to_location'] == 'AMD') echo 'selected'; ?>>Sardar Vallabhbhai Patel International Airport (AMD), Ahmedabad</option>
-            <option value="COK" <?php if ($flight['to_location'] == 'COK') echo 'selected'; ?>>Cochin International Airport (COK), Kochi</option>
-            <option value="PNQ" <?php if ($flight['to_location'] == 'PNQ') echo 'selected'; ?>>Pune Airport (PNQ), Pune</option>
-            <option value="GOI" <?php if ($flight['to_location'] == 'GOI') echo 'selected'; ?>>Dabolim Airport (GOI), Goa</option>
-        </select>
+            <option value="">-- Select Destination --</option>
+            <option value="DEL" <?php if ($flight['to_location'] === 'DEL') echo 'selected'; ?>>Delhi</option>
+            <option value="BOM" <?php if ($flight['to_location'] === 'BOM') echo 'selected'; ?>>Mumbai</option>
+            </select>
 
         <label>Departure Time:</label>
-        <input type="datetime-local" name="departure" value="<?php echo date('Y-m-d\TH:i', strtotime($flight['departure'])); ?>" required>
+        <input type="datetime-local" id="departure" name="departure" value="<?php echo str_replace(' ', 'T', $flight['departure']); ?>" required>
 
         <label>Arrival Time:</label>
-        <input type="datetime-local" name="arrival" value="<?php echo date('Y-m-d\TH:i', strtotime($flight['arrival'])); ?>" required>
+        <input type="datetime-local" id="arrival" name="arrival" value="<?php echo str_replace(' ', 'T', $flight['arrival']); ?>" required>
 
-        <label>Price:</label>
-        <input type="number" name="price" step="0.01" value="<?php echo $flight['price']; ?>" required>
+        <label>Economy Seats:</label>
+        <input type="number" id="economy_seats" name="economy_seats" value="<?php echo $flight['economy_seats']; ?>" required>
 
-        <label>Seats:</label>
-        <input type="number" name="seats" value="<?php echo $flight['seats']; ?>" required>
+        <label>Business Seats:</label>
+        <input type="number" id="business_seats" name="business_seats" value="<?php echo $flight['business_seats']; ?>" required>
+
+        <label>First Class Seats:</label>
+        <input type="number" id="first_class_seats" name="first_class_seats" value="<?php echo $flight['first_class_seats']; ?>" required>
+
+        <label>Economy Price (₹):</label>
+        <input type="number" id="economy_price" step="0.01" name="economy_price" value="<?php echo $flight['economy_price']; ?>" required>
+
+        <label>Business Price (₹):</label>
+        <input type="number" id="business_price" step="0.01" name="business_price" value="<?php echo $flight['business_price']; ?>" required>
+
+        <label>First Class Price (₹):</label>
+        <input type="number" id="first_class_price" step="0.01" name="first_class_price" value="<?php echo $flight['first_class_price']; ?>" required>
+<!-- 
+        <label>Duration (in minutes):</label>
+        <input type="number" name="duration" value="<?php echo $flight['duration']; ?>" required> -->
 
         <label>Status:</label>
         <select name="status" required>
-            <option value="active" <?php if ($flight['status'] == 'active') echo 'selected'; ?>>Active</option>
-            <option value="inactive" <?php if ($flight['status'] == 'inactive') echo 'selected'; ?>>Inactive</option>
+            <option value="On Time" <?php if ($flight['status'] === 'On Time') echo 'selected'; ?>>On Time</option>
+            <option value="Delayed" <?php if ($flight['status'] === 'Delayed') echo 'selected'; ?>>Delayed</option>
+            <option value="Cancelled" <?php if ($flight['status'] === 'Cancelled') echo 'selected'; ?>>Cancelled</option>
         </select>
 
         <input type="submit" value="Update Flight">
     </form>
-    
-        <div align="center"><a href="manage_flight.php">Go Back</a></div>
-        
+
+    <div align="center"><a href="manage_flight.php">Go Back</a></div>
 </body>
 </html>

@@ -1,45 +1,122 @@
 <?php
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php"); // Redirect if not logged in
-    exit();
-}
-
 require_once 'includes/db.php';
 
-// Mock payment success logic
-if (isset($_POST['make_payment'])) {
-    // Process payment (Here, we mock it)
-    $payment_status = "success"; // This should be based on a real payment gateway
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $flight_id = intval($_POST['flight_id']);
+    $name = trim($_POST['name']);
+    $gender = $_POST['gender'];
+    $age = intval($_POST['age']);
+    $seat_no = trim($_POST['seat_no']);
 
-    if ($payment_status == "success") {
-        // Insert into orders table or update payment status
-        $user_id = $_SESSION['user_id'];
-        $order_id = "ORD" . time(); // Generate unique order ID
+    // Fetch flight details
+    $stmt = $conn->prepare("SELECT * FROM flights2 WHERE id = ?");
+    $stmt->bind_param("i", $flight_id);
+    $stmt->execute();
+    $flight = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
 
-        $query = "INSERT INTO orders (user_id, order_id, payment_status) 
-                  VALUES ('$user_id', '$order_id', 'Paid')";
-
-        if (mysqli_query($conn, $query)) {
-            echo "✅ Payment successful! Your booking is confirmed.";
-            header("Location: ticket.php?order_id=$order_id"); // Redirect to ticket page
-            exit();
-        } else {
-            echo "❌ Error in processing payment: " . mysqli_error($conn);
-        }
-    } else {
-        echo "❌ Payment failed. Please try again.";
+    if (!$flight) {
+        die("Flight not found.");
     }
+
+    // Get price (you can expand to handle class-wise pricing)
+    $total_price = $flight['economy_price']; // Assume economy for now
+
+    // Insert into bookings2 table
+    $booking_sql = "INSERT INTO bookings2 (user_id, flight_id, booking_date, total_amount)
+                    VALUES (?, ?, NOW(), ?)";
+    $stmt = $conn->prepare($booking_sql);
+    $user_id = 1; // use actual user session if logged in
+    $stmt->bind_param("iid", $user_id, $flight_id, $total_price);
+    $stmt->execute();
+    $booking_id = $stmt->insert_id;
+    $stmt->close();
+
+    // Insert passenger
+    $passenger_sql = "INSERT INTO passengers (booking_id, name, gender, age, seat_no)
+                      VALUES (?, ?, ?, ?, ?)";
+    $stmt = $conn->prepare($passenger_sql);
+    $stmt->bind_param("issis", $booking_id, $name, $gender, $age, $seat_no);
+    $stmt->execute();
+    $stmt->close();
+
+    // Redirect to confirmation page
+    header("Location: booking_success.php?booking_id=$booking_id");
+    exit();
 }
 ?>
 
-<form method="POST">
-    <h3>Payment Details</h3>
-    <label>Card Number:</label><br>
-    <input type="text" name="card_number" required><br>
-    <label>Expiry Date:</label><br>
-    <input type="text" name="expiry_date" required><br>
-    <label>CVV:</label><br>
-    <input type="text" name="cvv" required><br>
-    <input type="submit" name="make_payment" value="Pay Now">
-</form>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Payment</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f0f2f5;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin: 15px 0 5px;
+        }
+
+        select, input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 8px;
+        }
+
+        input[type="submit"] {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #219150;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Choose Payment Method</h2>
+        <form method="POST">
+            <!-- Hidden values -->
+            <input type="hidden" name="flight_id" value="<?= htmlspecialchars($_POST['flight_id']) ?>">
+            <input type="hidden" name="name" value="<?= htmlspecialchars($_POST['name']) ?>">
+            <input type="hidden" name="gender" value="<?= htmlspecialchars($_POST['gender']) ?>">
+            <input type="hidden" name="age" value="<?= htmlspecialchars($_POST['age']) ?>">
+            <input type="hidden" name="seat_no" value="<?= htmlspecialchars($_POST['seat_no']) ?>">
+
+            <label for="payment_mode">Select Payment Mode:</label>
+            <select id="payment_mode" name="payment_mode" required>
+                <option value="">--Choose--</option>
+                <option value="UPI">UPI</option>
+                <option value="Credit Card">Credit Card</option>
+                <option value="Net Banking">Net Banking</option>
+            </select>
+
+            <input type="submit" value="Pay & Book">
+        </form>
+    </div>
+</body>
+</html>

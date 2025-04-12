@@ -1,16 +1,42 @@
 <?php
 session_start();
-require_once '../includes/db.php'; // Adjust path as needed
+require_once '../includes/db.php';
 
-// Check if admin is logged in
 if (!isset($_SESSION['admin'])) {
     header("Location: login.php");
     exit();
 }
 
-// Fetch flight data
-$sql = "SELECT * FROM flights";
+// Fetch all flight details
+$sql = "SELECT * FROM flights2 ORDER BY departure ASC";
 $result = $conn->query($sql);
+$flights = [];
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $flights[] = $row;
+    }
+}
+
+// Handle delete functionality
+if (isset($_GET['delete_id']) && is_numeric($_GET['delete_id'])) {
+    $delete_id = $_GET['delete_id'];
+    $delete_sql = "DELETE FROM flights2 WHERE id = ?";
+    $stmt = $conn->prepare($delete_sql);
+    if ($stmt) {
+        $stmt->bind_param("i", $delete_id);
+        if ($stmt->execute()) {
+            header("Location: manage_flight.php?deleted=true");
+            exit();
+        } else {
+            $delete_error = "Delete Error: " . $stmt->error;
+        }
+        $stmt->close();
+    } else {
+        $delete_error = "Prepare Failed: " . $conn->error;
+    }
+}
+
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -20,94 +46,132 @@ $result = $conn->query($sql);
     <title>Manage Flights</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
+            font-family: sans-serif;
+            margin: 20px;
         }
-        .top-bar {
-            margin-bottom: 20px;
-        }
-        .top-bar a {
-            text-decoration: none;
-            background-color: #28a745;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 5px;
+        h2 {
+            text-align: center;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-        }
-        table, th, td {
-            border: 1px solid #ccc;
-        }
-        th {
-            background-color: #f4f4f4;
+            margin-top: 20px;
         }
         th, td {
-            padding: 12px;
+            border: 1px solid #ccc;
+            padding: 8px;
             text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .actions a {
+            margin-right: 10px;
+            text-decoration: none;
         }
         .edit-btn {
             background-color: #007bff;
             color: white;
             padding: 5px 10px;
-            text-decoration: none;
-            border-radius: 4px;
+            border-radius: 5px;
         }
-        .edit-btn:hover {
-            background-color: #0056b3;
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        .success-message {
+            color: green;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .error-message {
+            color: red;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .add-new {
+            display: block;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .add-new a {
+            text-decoration: none;
+            background-color: #28a745;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
-
-    <div class="top-bar">
-        <a href="add_flight.php">+ Add New Flight</a>
-    </div>
-
     <h2>Manage Flights</h2>
 
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Airline Name</th>
-                <th>From</th>
-                <th>To</th>
-                <th>Departure</th>
-                <th>Arrival</th>
-                <th>Price</th>
-                <th>Seats</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if ($result->num_rows > 0): ?>
-                <?php while ($row = $result->fetch_assoc()): ?>
+    <?php if (isset($_GET['updated']) && $_GET['updated'] == 'true'): ?>
+        <p class="success-message">Flight details updated successfully!</p>
+    <?php endif; ?>
+
+    <?php if (isset($_GET['deleted']) && $_GET['deleted'] == 'true'): ?>
+        <p class="success-message">Flight deleted successfully!</p>
+    <?php endif; ?>
+
+    <?php if (isset($delete_error)): ?>
+        <p class="error-message"><?php echo $delete_error; ?></p>
+    <?php endif; ?>
+
+    <?php if (!empty($flights)): ?>
+        <table>
+            <thead>
+                <tr>
+                    <th>Flight ID</th>
+                    <th>Airline</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Departure</th>
+                    <th>Arrival</th>
+                    <th>Duration (min)</th>
+                    <th>Status</th>
+                    <th>Economy Seats</th>
+                    <th>Economy Price (₹)</th>
+                    <th>Business Seats</th>
+                    <th>Business Price (₹)</th>
+                    <th>First Class Seats</th>
+                    <th>First Class Price (₹)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($flights as $flight): ?>
                     <tr>
-                        <td><?php echo $row['id']; ?></td>
-                        <td><?php echo $row['airline_name']; ?></td>
-                        <td><?php echo $row['from_location']; ?></td>
-                        <td><?php echo $row['to_location']; ?></td>
-                        <td><?php echo $row['departure']; ?></td>
-                        <td><?php echo $row['arrival']; ?></td>
-                        <td><?php echo $row['price']; ?></td>
-                        <td><?php echo $row['seats']; ?></td>
-                        <td><?php echo ucfirst($row['status']); ?></td>
-                        <td>
-                            <a class="edit-btn" href="edit_flight.php?id=<?php echo $row['id']; ?>">Edit</a>
-                        </td>
+                        <td><?php echo $flight['id']; ?></td>
+                        <td><?php echo htmlspecialchars($flight['airline_name']); ?></td>
+                        <td><?php echo htmlspecialchars($flight['from_location']); ?></td>
+                        <td><?php echo htmlspecialchars($flight['to_location']); ?></td>
+                        <td><?php echo $flight['departure']; ?></td>
+                        <td><?php echo $flight['arrival']; ?></td>
+                        <td><?php echo $flight['duration']; ?></td>
+                        <td><?php echo htmlspecialchars($flight['status']); ?></td>
+                        <td><?php echo $flight['economy_seats']; ?></td>
+                        <td><?php echo number_format($flight['economy_price'], 2); ?></td>
+                        <td><?php echo $flight['business_seats']; ?></td>
+                        <td><?php echo number_format($flight['business_price'], 2); ?></td>
+                        <td><?php echo $flight['first_class_seats']; ?></td>
+                        <td><?php echo number_format($flight['first_class_price'], 2); ?></td>
+                        <td><a href="edit_flight.php?id=<?php echo $flight['id']; ?>">Edit</a></td>
                     </tr>
-                <?php endwhile; ?>
-            <?php else: ?>
-                <tr><td colspan="10">No flights available.</td></tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php else: ?>
+        <p>No flights available.</p>
+    <?php endif; ?>
 
-    <a href="dashbord.php">← Back to Dashboard</a>
-
+    <div class="add-new">
+        <a href="add_flight.php">Add New Flight</a>
+    </div>
 </body>
 </html>
