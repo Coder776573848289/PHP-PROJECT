@@ -173,5 +173,8 @@ $conn->close();
     <div class="add-new">
         <a href="add_flight.php">Add New Flight</a>
     </div>
+    <div class="back-link">
+    <a href="dashbord.php">← Back to Dashboard</a>
+    </div>
 </body>
 </html>

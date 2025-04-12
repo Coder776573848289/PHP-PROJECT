@@ -21,7 +21,8 @@
 
     <a href="search_flights.php">Quick Flight Search</a>  &nbsp; &nbsp; &nbsp; 
     <a href="login.php">Login</a> &nbsp; &nbsp; &nbsp;
-    <a href="register.php">New User</a>
+    <a href="register.php">New User</a>  &nbsp; &nbsp; &nbsp;
+    <a href="admin/login.php">Admin</a>
 
     </div>
     
