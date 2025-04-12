@@ -2,42 +2,55 @@
 session_start();
 require_once 'includes/db.php';
 
-// Dummy session (replace with real login logic)
-$_SESSION['user_id'] = 1;
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
 $user_id = $_SESSION['user_id'];
 
-// Fetch user info (replace with actual user table if needed)
-$user_name = "John Doe"; // Placeholder name
-
-// Fetch bookings for user
-$sql = "SELECT b.id AS booking_id, b.booking_date, b.total_amount, 
-               f.airline_name, f.from_location, f.to_location, f.departure, f.arrival, 
-               p.name AS passenger_name, p.gender, p.age, p.seat_no
-        FROM bookings2 b
-        JOIN flights2 f ON b.flight_id = f.id
-        JOIN passengers p ON b.id = p.booking_id
-        WHERE b.user_id = ?
-        ORDER BY f.departure DESC";
+// Fetch user bookings
+$sql = "
+SELECT 
+    b.id AS booking_id,
+    b.class_type,
+    b.total_amount,
+    b.payment_status,
+    b.booking_time,
+    f1.airline_name AS onward_airline,
+    f1.from_location AS onward_from,
+    f1.to_location AS onward_to,
+    f1.departure AS onward_departure,
+    f1.arrival AS onward_arrival,
+    f2.airline_name AS return_airline,
+    f2.from_location AS return_from,
+    f2.to_location AS return_to,
+    f2.departure AS return_departure,
+    f2.arrival AS return_arrival
+FROM bookings2 b
+JOIN flights2 f1 ON b.flight_id = f1.id
+LEFT JOIN flights2 f2 ON b.return_flight_id = f2.id
+WHERE b.user_id = ?
+ORDER BY b.booking_time DESC
+";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
-
-$upcoming = [];
-$past = [];
+$bookings = [];
 
 while ($row = $result->fetch_assoc()) {
-    $departure = strtotime($row['departure']);
-    $now = time();
-    if ($departure > $now) {
-        $upcoming[] = $row;
-    } else {
-        $past[] = $row;
-    }
+    // Get passengers for each booking
+    $booking_id = $row['booking_id'];
+    $pass_stmt = $conn->prepare("SELECT name, gender, age, seat_no FROM passengers WHERE booking_id = ?");
+    $pass_stmt->bind_param("i", $booking_id);
+    $pass_stmt->execute();
+    $pass_result = $pass_stmt->get_result();
+    $passengers = $pass_result->fetch_all(MYSQLI_ASSOC);
+    $row['passengers'] = $passengers;
+    $bookings[] = $row;
 }
-
-$stmt->close();
 ?>
 
 <!DOCTYPE html>
@@ -45,142 +58,96 @@ $stmt->close();
 <head>
     <title>User Dashboard</title>
     <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: #f4f6f9;
-            padding: 40px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: auto;
-            background-color: white;
-            padding: 25px 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-
-        h2 {
-            text-align: center;
+        body { font-family: Arial; background: #f5f5f5; padding: 30px; }
+        .dashboard-container { max-width: 1000px; margin: auto; }
+        .booking-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
             margin-bottom: 25px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
-
-        table {
+        h2 { text-align: center; margin-bottom: 30px; }
+        .flight-info { margin-bottom: 10px; }
+        .label { font-weight: bold; }
+        .passenger-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 15px;
         }
-
-        table th, table td {
-            padding: 12px 10px;
+        .passenger-table th, .passenger-table td {
+            border: 1px solid #ccc;
+            padding: 8px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
         }
-
-        table th {
-            background-color: #3498db;
-            color: white;
-        }
-
-        .section-title {
-            margin-top: 40px;
-            font-size: 20px;
-            color: #333;
-            border-bottom: 2px solid #3498db;
-            display: inline-block;
-            padding-bottom: 5px;
-        }
-
-        .user-info {
-            font-size: 18px;
-            background-color: #ecf0f1;
-            padding: 15px;
-            border-radius: 8px;
-        }
+        .status-paid { color: green; font-weight: bold; }
+        .status-pending { color: red; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Welcome, <?= htmlspecialchars($user_name) ?></h2>
-        <div class="user-info">
-            <strong>User ID:</strong> <?= htmlspecialchars($user_id) ?><br>
-            <strong>Email:</strong> johndoe@example.com <!-- update if needed -->
-        </div>
+<div style="text-align: right; margin-bottom: 20px;">
+    <form action="logout_user.php" method="POST">
+        <button type="submit" style="background-color: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+            Logout
+        </button>
+    </form>
+</div>
 
-        <div class="section-title">✈️ Upcoming Bookings</div>
-        <?php if (count($upcoming) > 0): ?>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Booking ID</th>
-                        <th>Passenger</th>
-                        <th>Flight</th>
-                        <th>From → To</th>
-                        <th>Departure</th>
-                        <th>Arrival</th>
-                        <th>Seat</th>
-                        <th>Amount (₹)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($upcoming as $b): ?>
-                        <tr>
-                            <td><?= $b['booking_id'] ?></td>
-                            <td><?= htmlspecialchars($b['passenger_name']) ?> (<?= $b['gender'] ?>, <?= $b['age'] ?>)</td>
-                            <td><?= htmlspecialchars($b['airline_name']) ?></td>
-                            <td><?= htmlspecialchars($b['from_location']) ?> → <?= htmlspecialchars($b['to_location']) ?></td>
-                            <td><?= $b['departure'] ?></td>
-                            <td><?= $b['arrival'] ?></td>
-                            <td><?= $b['seat_no'] ?></td>
-                            <td>₹<?= number_format($b['total_amount'], 2) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php else: ?>
-            <p>No upcoming bookings found.</p>
-        <?php endif; ?>
+<div class="dashboard-container">
+    <h2>Welcome to Your Dashboard</h2>
+    <a href="search_flights.php"> Search Flight</a>  &nbsp; &nbsp; &nbsp; 
+    <?php if (isset($_GET['success'])): ?>
+        <p style="color: green; text-align: center;">✅ Booking Successful!</p>
+    <?php endif; ?>
 
-        <div class="section-title">📜 Booking History</div>
-        <?php if (count($past) > 0): ?>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Booking ID</th>
-                        <th>Passenger</th>
-                        <th>Flight</th>
-                        <th>From → To</th>
-                        <th>Departure</th>
-                        <th>Arrival</th>
-                        <th>Seat</th>
-                        <th>Amount (₹)</th>
-                        <th>E-Ticket</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($past as $b): ?>
-                        <tr>
-                            <td><?= $b['booking_id'] ?></td>
-                            <td><?= htmlspecialchars($b['passenger_name']) ?> (<?= $b['gender'] ?>, <?= $b['age'] ?>)</td>
-                            <td><?= htmlspecialchars($b['airline_name']) ?></td>
-                            <td><?= htmlspecialchars($b['from_location']) ?> → <?= htmlspecialchars($b['to_location']) ?></td>
-                            <td><?= $b['departure'] ?></td>
-                            <td><?= $b['arrival'] ?></td>
-                            <td><?= $b['seat_no'] ?></td>
-                            <td>₹<?= number_format($b['total_amount'], 2) ?></td>
-                            <td>
-                                <form action="view_e_ticket.php" method="GET" target="_blank">
-                                    <input type="hidden" name="booking_id" value="<?= $b['booking_id'] ?>">
-                                    <button type="submit">View E-Ticket</button>
-                                </form>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php else: ?>
-            <p>No past bookings found.</p>
-        <?php endif; ?>
-    </div>
+    <?php if (empty($bookings)): ?>
+        <p>No bookings found.</p>
+    <?php else: ?>
+        <?php foreach ($bookings as $b): ?>
+            <div class="booking-card">
+                <div class="flight-info">
+                    <p><span class="label">Booking ID:</span> <?= $b['booking_id'] ?></p>
+                    <p><span class="label">Class:</span> <?= ucfirst($b['class_type']) ?></p>
+                    <p><span class="label">Amount:</span> ₹<?= number_format($b['total_amount'], 2) ?></p>
+                    <p><span class="label">Payment:</span> 
+                        <span class="<?= $b['payment_status'] === 'Paid' ? 'status-paid' : 'status-pending' ?>">
+                            <?= $b['payment_status'] ?>
+                        </span>
+                    </p>
+                    <p><span class="label">Booked on:</span> <?= $b['booking_time'] ?></p>
+                </div>
+
+                <div class="flight-info">
+                    <h4>✈️ Onward Flight:</h4>
+                    <p><?= $b['onward_airline'] ?> — <?= $b['onward_from'] ?> ➡ <?= $b['onward_to'] ?></p>
+                    <p>Departure: <?= $b['onward_departure'] ?> | Arrival: <?= $b['onward_arrival'] ?></p>
+                </div>
+
+                <?php if ($b['return_airline']): ?>
+                    <div class="flight-info">
+                        <h4>🔁 Return Flight:</h4>
+                        <p><?= $b['return_airline'] ?> — <?= $b['return_from'] ?> ➡ <?= $b['return_to'] ?></p>
+                        <p>Departure: <?= $b['return_departure'] ?> | Arrival: <?= $b['return_arrival'] ?></p>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($b['passengers'])): ?>
+                    <h4>👥 Passengers:</h4>
+                    <table class="passenger-table">
+                        <tr><th>Name</th><th>Gender</th><th>Age</th><th>Seat No</th></tr>
+                        <?php foreach ($b['passengers'] as $p): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($p['name']) ?></td>
+                                <td><?= $p['gender'] ?></td>
+                                <td><?= $p['age'] ?></td>
+                                <td><?= $p['seat_no'] ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </table>
+                <?php endif; ?>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+</div>
 </body>
 </html>

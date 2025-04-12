@@ -1,115 +1,82 @@
 <?php
-// Example: get the flight_id from URL
+session_start();
 $flight_id = isset($_GET['flight_id']) ? intval($_GET['flight_id']) : 0;
-
 if ($flight_id <= 0) {
     die("Invalid Flight Selection");
 }
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
     <title>Passenger Details</title>
     <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: auto;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        h2 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 25px;
-        }
-
-        label {
-            display: block;
-            margin-top: 15px;
-            font-weight: 500;
-            color: #34495e;
-        }
-
-        input, select {
-            width: 100%;
-            padding: 10px;
-            margin-top: 6px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .submit-btn {
-            width: 100%;
-            background-color: #3498db;
-            color: white;
-            padding: 12px;
-            font-size: 16px;
-            border: none;
-            border-radius: 6px;
-            margin-top: 25px;
-            cursor: pointer;
-        }
-
-        .submit-btn:hover {
-            background-color: #2980b9;
-        }
-
-        .back-link {
-            display: block;
-            text-align: center;
-            margin-top: 20px;
-            color: #3498db;
-            text-decoration: none;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
-        }
+        /* Your existing styling */
     </style>
+    <script>
+        function addPassengerFields(count) {
+            const container = document.getElementById('passenger-fields');
+            container.innerHTML = '';
+            for (let i = 1; i <= count; i++) {
+                container.innerHTML += `
+                    <fieldset>
+                        <legend>Passenger ${i}</legend>
+                        <label>Full Name:</label>
+                        <input type="text" name="passengers[${i}][name]" required>
+
+                        <label>Gender:</label>
+                        <select name="passengers[${i}][gender]" required>
+                            <option value="">-- Select --</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+
+                        <label>Age:</label>
+                        <input type="number" name="passengers[${i}][age]" min="1" required>
+
+                        <label>Seat Number:</label>
+                        <select name="passengers[${i}][seat_no]" required>
+                            <option value="">-- Select Seat --</option>
+                            <option>Standard Window Seat</option>
+                            <option>Exit Row Window Seat</option>
+                            <option>Bulkhead Window Seat</option>
+                            <option>Window Seat Over the Wing</option>
+                            <option>Rearmost Window Seat</option>
+                        </select>
+                    </fieldset>
+                `;
+            }
+        }
+    </script>
 </head>
 <body>
 
-    <div class="container">
-        <h2>Enter Passenger Details</h2>
+<div class="container">
+    <h2>Passenger Details</h2>
+    <form method="POST" action="payment.php">
+        <input type="hidden" name="flight_id" value="<?= $flight_id ?>">
+        
+        <label>No. of Passengers:</label>
+        <select name="num_passengers" onchange="addPassengerFields(this.value)" required>
+            <option value="">-- Select --</option>
+            <?php for ($i = 1; $i <= 6; $i++): ?>
+                <option value="<?= $i ?>"><?= $i ?></option>
+            <?php endfor; ?>
+        </select>
 
-        <form action="confirm_booking.php" method="POST">
-            <input type="hidden" name="flight_id" value="<?= $flight_id ?>">
+        <div id="passenger-fields"></div>
 
-            <label for="name">Full Name:</label>
-            <input type="text" name="name" id="name" required>
+        <label>Seat Class:</label>
+        <select name="class_type" required>
+            <option value="">-- Select --</option>
+            <option value="economy">Economy</option>
+            <option value="business">Business</option>
+            <option value="first">First</option>
+        </select>
 
-            <label for="gender">Gender:</label>
-            <select name="gender" id="gender" required>
-                <option value="">-- Select Gender --</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-            </select>
-
-            <label for="age">Age:</label>
-            <input type="number" name="age" id="age" min="1" required>
-
-            <label for="seat_no">Preferred Seat No (e.g., A12):</label>
-            <input type="text" name="seat_no" id="seat_no" required>
-
-            <button class="submit-btn" type="submit">Proceed to Payment</button>
-        </form>
-
-        <a href="flight_results.php" class="back-link">← Back to Flight Results</a>
-    </div>
+        <button type="submit">Confirm Booking</button>
+    </form>
+</div>
 
 </body>
 </html>

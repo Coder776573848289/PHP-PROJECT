@@ -20,11 +20,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if ($result && mysqli_num_rows($result) == 1) {
             $user = mysqli_fetch_assoc($result);
-            
-            // Simple plain password match (for learning) - In production use password_hash()
+
+            // Simple plain password match (for learning)
             if ($password === $user['password']) {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_name'] = $user['name'];
+
+                // ✅ Handle redirect back after login (like from confirm_booking.php)
+                if (isset($_SESSION['redirect_after_login'])) {
+                    $redirect = $_SESSION['redirect_after_login'];
+                    unset($_SESSION['redirect_after_login']);
+
+                    if (isset($_SESSION['post_data'])) {
+                        $post_data = $_SESSION['post_data'];
+                        unset($_SESSION['post_data']);
+                        ?>
+                        <form id="redirectForm" action="<?= htmlspecialchars($redirect) ?>" method="POST">
+                            <?php foreach ($post_data as $key => $value): ?>
+                                <?php if (is_array($value)): ?>
+                                    <?php foreach ($value as $i => $sub): ?>
+                                        <?php foreach ($sub as $subkey => $subvalue): ?>
+                                            <input type="hidden" name="<?= $key ?>[<?= $i ?>][<?= $subkey ?>]" value="<?= htmlspecialchars($subvalue) ?>">
+                                        <?php endforeach; ?>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <input type="hidden" name="<?= $key ?>" value="<?= htmlspecialchars($value) ?>">
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </form>
+                        <script>document.getElementById('redirectForm').submit();</script>
+                        <?php
+                        exit;
+                    }
+
+                    header("Location: $redirect");
+                    exit;
+                }
+
+                // Default: Go to dashboard
                 header("Location: user_dashboard.php");
                 exit();
             } else {
@@ -36,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html>

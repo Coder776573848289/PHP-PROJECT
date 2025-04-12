@@ -1,122 +1,104 @@
 <?php
+session_start();
 require_once 'includes/db.php';
 
+if (!isset($_SESSION['booking']) || !isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$booking = $_SESSION['booking'];
+$user_id = $_SESSION['user_id'];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $flight_id = intval($_POST['flight_id']);
-    $name = trim($_POST['name']);
-    $gender = $_POST['gender'];
-    $age = intval($_POST['age']);
-    $seat_no = trim($_POST['seat_no']);
-
-    // Fetch flight details
-    $stmt = $conn->prepare("SELECT * FROM flights2 WHERE id = ?");
-    $stmt->bind_param("i", $flight_id);
-    $stmt->execute();
-    $flight = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
-    if (!$flight) {
-        die("Flight not found.");
-    }
-
-    // Get price (you can expand to handle class-wise pricing)
-    $total_price = $flight['economy_price']; // Assume economy for now
+    $flight_id = $booking['flight_id'];
+    $return_flight_id = isset($booking['return_flight_id']) ? $booking['return_flight_id'] : null;
+    $class_type = $booking['class_type'];
+    $total_amount = $booking['total_amount'];
+    $passengers = $booking['passengers'];
+    $payment_mode = $_POST['payment_mode'];
+    $transaction_id = 'TXN' . strtoupper(uniqid());
 
     // Insert into bookings2 table
-    $booking_sql = "INSERT INTO bookings2 (user_id, flight_id, booking_date, total_amount)
-                    VALUES (?, ?, NOW(), ?)";
-    $stmt = $conn->prepare($booking_sql);
-    $user_id = 1; // use actual user session if logged in
-    $stmt->bind_param("iid", $user_id, $flight_id, $total_price);
+    $stmt = $conn->prepare("INSERT INTO bookings2 (user_id, flight_id, return_flight_id, class_type, total_amount, payment_status) VALUES (?, ?, ?, ?, ?, 'Paid')");
+    $stmt->bind_param("iiisd", $user_id, $flight_id, $return_flight_id, $class_type, $total_amount);
     $stmt->execute();
     $booking_id = $stmt->insert_id;
-    $stmt->close();
 
-    // Insert passenger
-    $passenger_sql = "INSERT INTO passengers (booking_id, name, gender, age, seat_no)
-                      VALUES (?, ?, ?, ?, ?)";
-    $stmt = $conn->prepare($passenger_sql);
-    $stmt->bind_param("issis", $booking_id, $name, $gender, $age, $seat_no);
-    $stmt->execute();
-    $stmt->close();
+    // Insert passengers
+    $pass_stmt = $conn->prepare("INSERT INTO passengers (booking_id, name, gender, age, seat_no) VALUES (?, ?, ?, ?, ?)");
+    foreach ($passengers as $p) {
+        $pass_stmt->bind_param("issis", $booking_id, $p['name'], $p['gender'], $p['age'], $p['seat_no']);
+        $pass_stmt->execute();
+    }
 
-    // Redirect to confirmation page
-    header("Location: booking_success.php?booking_id=$booking_id");
-    exit();
+    // Insert payment
+    $pay_stmt = $conn->prepare("INSERT INTO payments (booking_id, payment_mode, transaction_id, amount) VALUES (?, ?, ?, ?)");
+    $pay_stmt->bind_param("issd", $booking_id, $payment_mode, $transaction_id, $total_amount);
+    $pay_stmt->execute();
+
+    unset($_SESSION['booking']);
+
+    // Redirect to dashboard with success flag
+    header("Location: user_dashboard.php?success=1");
+    exit;
 }
 ?>
 
+<!-- Payment Form -->
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
     <title>Payment</title>
     <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: #f0f2f5;
-            padding: 40px;
-        }
-
-        .container {
-            max-width: 600px;
+        body { font-family: Arial; background: #f8f9fa; padding: 30px; }
+        .payment-box {
+            max-width: 500px;
             margin: auto;
-            background-color: white;
+            background: #fff;
+            border-radius: 8px;
             padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
-
-        h2 {
-            text-align: center;
-            margin-bottom: 25px;
+        h2 { text-align: center; }
+        .info {
+            margin-bottom: 20px;
+            background: #f1f1f1;
+            padding: 15px;
+            border-radius: 5px;
         }
-
-        label {
-            display: block;
-            margin: 15px 0 5px;
-        }
-
-        select, input[type="submit"] {
+        select, button {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             font-size: 16px;
-            margin-top: 8px;
+            border-radius: 5px;
         }
-
-        input[type="submit"] {
-            background-color: #27ae60;
+        button {
+            background: #28a745;
             color: white;
             border: none;
-            cursor: pointer;
         }
-
-        input[type="submit"]:hover {
-            background-color: #219150;
-        }
+        button:hover { background: #218838; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Choose Payment Method</h2>
-        <form method="POST">
-            <!-- Hidden values -->
-            <input type="hidden" name="flight_id" value="<?= htmlspecialchars($_POST['flight_id']) ?>">
-            <input type="hidden" name="name" value="<?= htmlspecialchars($_POST['name']) ?>">
-            <input type="hidden" name="gender" value="<?= htmlspecialchars($_POST['gender']) ?>">
-            <input type="hidden" name="age" value="<?= htmlspecialchars($_POST['age']) ?>">
-            <input type="hidden" name="seat_no" value="<?= htmlspecialchars($_POST['seat_no']) ?>">
-
-            <label for="payment_mode">Select Payment Mode:</label>
-            <select id="payment_mode" name="payment_mode" required>
-                <option value="">--Choose--</option>
-                <option value="UPI">UPI</option>
-                <option value="Credit Card">Credit Card</option>
-                <option value="Net Banking">Net Banking</option>
-            </select>
-
-            <input type="submit" value="Pay & Book">
-        </form>
+<div class="payment-box">
+    <h2>Payment</h2>
+    <div class="info">
+        <p><strong>Total Amount:</strong> ₹<?= number_format($booking['total_amount'], 2) ?></p>
+        <p><strong>Seat Class:</strong> <?= ucfirst($booking['class_type']) ?></p>
+        <p>Select a payment method to complete your booking:</p>
     </div>
+    <form method="POST">
+        <label>Payment Mode:</label>
+        <select name="payment_mode" required>
+            <option value="UPI">UPI</option>
+            <option value="Credit Card">Credit Card</option>
+            <option value="Debit Card">Debit Card</option>
+        </select>
+        <br><br>
+        <button type="submit">Pay & Confirm Booking</button>
+    </form>
+</div>
 </body>
 </html>

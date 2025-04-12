@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../includes/db.php'; // Adjust the path if needed
+require_once '../includes/db.php';
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin'])) {
@@ -9,7 +9,7 @@ if (!isset($_SESSION['admin'])) {
 }
 
 // Fetch all users
-$sql = "SELECT * FROM users ORDER BY id DESC";
+$sql = "SELECT * FROM users ORDER BY id ASC";
 $result = $conn->query($sql);
 ?>
 
@@ -67,6 +67,7 @@ $result = $conn->query($sql);
             <th>Name</th>
             <th>Email</th>
             <th>Phone</th>
+            <th>Registered At</th>
         </tr>
     </thead>
     <tbody>
@@ -77,11 +78,12 @@ $result = $conn->query($sql);
                     <td><?= htmlspecialchars($row['name']) ?></td>
                     <td><?= htmlspecialchars($row['email']) ?></td>
                     <td><?= htmlspecialchars($row['phone']) ?></td>
+                    <td><?= htmlspecialchars($row['created_at']) ?></td>
                 </tr>
             <?php endwhile; ?>
         <?php else: ?>
             <tr>
-                <td colspan="4">No users found.</td>
+                <td colspan="5">No users found.</td>
             </tr>
         <?php endif; ?>
     </tbody>

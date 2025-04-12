@@ -7,14 +7,11 @@ if (!isset($_SESSION['admin'])) {
     exit();
 }
 
-// Set timezone
 date_default_timezone_set('Asia/Kolkata');
-
-// Get today's date (only date part)
 $today = date('Y-m-d');
 
-// Fetch bookings with today's date
-$sql = "SELECT * FROM bookings WHERE DATE(booking_time) = ? ORDER BY booking_time DESC";
+// Updated query for bookings2
+$sql = "SELECT * FROM bookings2 WHERE DATE(booking_time) = ? ORDER BY booking_time DESC";
 $stmt = $conn->prepare($sql);
 
 if ($stmt) {
@@ -41,7 +38,7 @@ if ($stmt) {
         }
 
         table {
-            width: 90%;
+            width: 95%;
             margin: 20px auto;
             border-collapse: collapse;
         }
@@ -66,13 +63,8 @@ if ($stmt) {
             font-weight: bold;
         }
 
-        .status-unpaid {
+        .status-pending {
             color: red;
-            font-weight: bold;
-        }
-
-        .status-unknown {
-            color: gray;
             font-weight: bold;
         }
 
@@ -87,7 +79,6 @@ if ($stmt) {
             color: red;
             font-weight: bold;
         }
-
     </style>
 </head>
 <body>
@@ -103,10 +94,9 @@ if ($stmt) {
                 <th>ID</th>
                 <th>User ID</th>
                 <th>Flight ID</th>
-                <th>Passenger Name</th>
-                <th>Gender</th>
-                <th>Age</th>
-                <th>Seat No</th>
+                <th>Return Flight ID</th>
+                <th>Class</th>
+                <th>Total Amount</th>
                 <th>Payment Status</th>
                 <th>Booking Time</th>
             </tr>
@@ -118,28 +108,18 @@ if ($stmt) {
                         <td><?= htmlspecialchars($row['id']) ?></td>
                         <td><?= htmlspecialchars($row['user_id']) ?></td>
                         <td><?= htmlspecialchars($row['flight_id']) ?></td>
-                        <td><?= htmlspecialchars($row['passenger_name'] ?? 'N/A') ?></td>
-                        <td><?= htmlspecialchars($row['gender'] ?? 'N/A') ?></td>
-                        <td><?= htmlspecialchars($row['age'] ?? 'N/A') ?></td>
-                        <td><?= htmlspecialchars($row['seat_no'] ?? 'N/A') ?></td>
-
-                        <?php
-                            $status = strtolower(trim($row['payment_status']));
-                            $statusClass = 'status-unknown';
-
-                            if ($status === 'paid') $statusClass = 'status-paid';
-                            elseif ($status === 'unpaid') $statusClass = 'status-unpaid';
-                        ?>
-                        <td class="<?= $statusClass ?>">
-                            <?= htmlspecialchars(ucfirst($row['payment_status'] ?? 'Unknown')) ?>
+                        <td><?= $row['return_flight_id'] ?? 'N/A' ?></td>
+                        <td><?= ucfirst(htmlspecialchars($row['class_type'])) ?></td>
+                        <td>₹<?= number_format($row['total_amount'], 2) ?></td>
+                        <td class="<?= strtolower($row['payment_status']) === 'paid' ? 'status-paid' : 'status-pending' ?>">
+                            <?= htmlspecialchars($row['payment_status']) ?>
                         </td>
-
                         <td><?= htmlspecialchars($row['booking_time']) ?></td>
                     </tr>
                 <?php endwhile; ?>
             <?php else: ?>
                 <tr>
-                    <td colspan="9">No bookings made today.</td>
+                    <td colspan="8">No bookings made today.</td>
                 </tr>
             <?php endif; ?>
         </tbody>

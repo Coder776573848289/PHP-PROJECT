@@ -49,7 +49,7 @@ $username = $_SESSION['admin'];
         
         <a href="manage_flight.php">Total Flights</a>
         <a href="booking.php">Booking</a>
-        <a href="pending-payments.php">Pending Payments</a>
+        
         <a href="todaybookings.php">Today's Booking</a>
         <a href="manageusers.php">Manage All Users</a>
     </div>

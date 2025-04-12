@@ -24,6 +24,7 @@
     <a href="register.php">New User</a>  &nbsp; &nbsp; &nbsp;
     <a href="admin/login.php">Admin</a>
 
+    
     </div>
     
 </body>
